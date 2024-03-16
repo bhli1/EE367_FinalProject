@@ -1,0 +1,102 @@
+clear; clc; clf;close All;
+%%
+addpath('Functions')
+addpath 'reticolo_allege_v9'
+addpath('reticolo_allege_v9/refractive index/')
+load TORun_001_SGD_TM_BV0_h525_p800_wltot50_patch5_v2.mat
+% load TORun_001_SGD_TM_BV0_h525_wltot50_patch5
+% load TORun_00_SGD_1st_TM_3patch_corrected_0p1.mat
+
+num_tot = 100;
+list_wavelength=linspace(400,700,num_tot);
+period=OptParm.Geometry.Period;% same unit as wavelength
+thickness = OptParm.Geometry.Thickness;
+% FinalPattern = optout.FinalPattern;
+n_incident_medium=1;% refractive index of the top layer 
+angle_theta=0;
+k_parallel=n_incident_medium*sin(angle_theta*pi/180); 
+angle_delta=0;
+parm=res0;         % default parameters for "parm"
+parm.res1.champ=1; % the eletromagnetic field is calculated accurately
+nn= NFourier; % Fourier harmonics
+textures=cell(1,3);
+textures{1}= {nTop};                % uniform texture
+textures{2}= {nBot};             % uniform texture
+% FinalPattern = ThreshFilter(FinalPattern,100,0.5);
+nPattern = FinalPattern*(nDevice - nTop) + nTop;
+textures{3} = FractureGeom(nPattern,nTop,nDevice,xGrid,yGrid);
+transmission_list = zeros(1,num_tot);
+reflection_list = zeros(1,num_tot);
+for ii = 1:num_tot
+    lam = list_wavelength(ii);
+    profile={[0,thickness,0],[1,3,2]};
+    aa=res1(lam,period,textures,nn,k_parallel,angle_delta,parm);
+    result=res2(aa,profile);
+    t1 = result.TMinc_bottom_transmitted.efficiency; %transmitted/reflected
+    r1 = result.TMinc_bottom_reflected.efficiency; %transmitted/reflected
+%     t1 = result.TEinc_bottom_transmitted.efficiency; %transmitted/reflected
+%     r1 = result.TEinc_bottom_reflected.efficiency; %transmitted/reflected
+    % remember to change polarisation if needed
+    transmission_list(ii) = t1((length(t1)+1)/2+1); %+sum(eff2))/2
+    reflection_list(ii) = r1((length(r1)+1)/2+1); %+sum(eff2))/2
+    retio;
+end
+
+%%
+transmission525 = transmission_list;
+reflection525 = reflection_list;
+%%
+figure;
+plot(list_wavelength,transmission125, 'Linewidth',2.5); hold on
+plot(list_wavelength,transmission225, 'Linewidth',2.5);
+plot(list_wavelength,transmission325, 'Linewidth',2.5);
+plot(list_wavelength,transmission425, 'Linewidth',2.5);
+plot(list_wavelength,transmission525, 'Linewidth',2.5);
+% plot(list_wavelength,reflection_list,'Linewidth',1.5); 
+hold off
+set(gcf,'color','w'); grid minor;
+ylabel('1st order transmission','FontSize',20,'Interpreter','latex'); 
+xlabel('Wavelength(nm)','FontSize',20,'Interpreter','latex');
+ylim([0 1]);
+legend('h=125 nm','h=225 nm','h=325 nm','h=425 nm','h=525 nm')
+h=gca; % let h = the current set of axes
+h.FontSize = 16; %Set axis fontsize
+h.LineWidth = 1; % Set axis linewidth
+h.XMinorTick = 'on'; % Set x axis minor ticks to true
+h.YMinorTick = 'on'; % Set y axis minor ticks to true
+h.TickLabelInterpreter = 'latex'; % Set the axis to compile using latex
+h.MinorGridAlpha = 0.25;% set the transparency of the grid
+
+%%
+
+plot(1:iter, [(FoM_leastnorm(1:iter))'], 'linewidth',2); hold off;
+xlabel('Iteration')
+ylabel('FoM to be minimized...')
+      set(gca, 'linewidth',2, 'fontsize', 20);
+
+%% Field calculations:
+% field calculation in plane y=0
+% x=linspace(-period(1)/2,period(1)/2,51);y=0;%(x,y) coordinates (z-coordinates are determined by res3.m)
+% einc=[1,1]/sqrt(2);% E-field components in the (u, v) basis [TM,TE] (default is illumination from the top layer)
+% parm.res3.trace=1; % plotting automatically Selective plotting: parm.res3.champs=[2,3,6,0]
+% parm.res3.npts=[50,50,50,50];
+% % parm.res3.sens=1; % Illumination from the top; -1 for the case from bottom.
+% lam_field_cal = 1.255;
+% n_transmitted_medium=n_sio2(lam_field_cal);% refractive index of the bottom layer (sio2 quartz)
+% textures{1}= n_incident_medium;                % uniform texture
+% textures{2}= n_transmitted_medium;             % uniform texture
+% diameter = 0.400; textures{3}= {n_incident_medium,[0,0,diameter,diameter,real(n_si(lam_field_cal)),5]}; % nano-cylinder [cx,cy,Lx,Ly,n,M>=5]
+% profile={[0.2,0.264,0.2],[1,3,2]};
+% aa=res1(lam_field_cal,period,textures,nn,k_parallel,angle_delta,parm);
+% [e1,z1,index]=res3(x,y,aa,profile,einc,parm);
+% e2 = squeeze(e1);
+% e_tot_ele = abs(sqrt(e2(:,:,1).^2+e2(:,:,3).^2));
+% figure;pcolor(x,z1,real(e_tot_ele));
+% shading flat;xlabel('x');ylabel('y');axis equal;title('Abs(E)');
+% e_tot_mag = abs(sqrt(e2(:,:,5).^2+e2(:,:,6).^2));
+% figure;pcolor(x,z1,real(e_tot_mag));
+% shading flat;xlabel('x');ylabel('y');axis equal;title('Abs(H)');
+
+% figure;pcolor(x,z1,real(squeeze(e1(:,:,:,2)))); % user plotting
+
+
